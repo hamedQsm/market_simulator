@@ -1,0 +1,6 @@
+selenium
+python-telegram-bot
+requests
+python-bitvavo-api
+plotly
+pandas
