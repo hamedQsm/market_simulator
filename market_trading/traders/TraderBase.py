@@ -54,12 +54,20 @@ class TraderBase:
     def sell_in_currency(self, amount, asset_price):
         self.sell(amount/asset_price, asset_price)
 
-    def how_much_to_buy(self, asset_price):
-        """ Will be called in every simulation step"""
+    def how_much_to_buy(self, asset_price, price_window=None):
+        """ Will be called in every simulation step
+
+        Args:
+            price_window:
+        """
         pass
 
-    def how_much_to_sell(self, asset_price):
-        """ Will be called in every simulation step"""
+    def how_much_to_sell(self, asset_price, price_window=None):
+        """ Will be called in every simulation step
+
+        Args:
+            price_window:
+        """
         pass
 
     def initial_buy(self, asset_price):

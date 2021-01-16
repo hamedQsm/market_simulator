@@ -14,7 +14,7 @@ class BTCMarketSimulator(MarketBase):
             .reset_index().drop(columns=['index'])
         )
 
-        self.crnt_index = 0
+        self.crnt_time = 0
 
     def get_current_price(self):
         """
@@ -22,11 +22,11 @@ class BTCMarketSimulator(MarketBase):
         Returns:
 
         """
-        if self.crnt_index >= len(self.btc_df):
+        if self.crnt_time >= len(self.btc_df):
             return None
 
-        crnt_row = self.btc_df.iloc[self.crnt_index]
-        self.crnt_index += 1
+        crnt_row = self.btc_df.iloc[self.crnt_time]
+        self.crnt_time += 1
         return {
             'open': crnt_row.Open,
             'close': crnt_row.Close,
@@ -35,10 +35,10 @@ class BTCMarketSimulator(MarketBase):
         }
 
     def sleep(self, seconds):
-        self.crnt_index += seconds//60
+        self.crnt_time += seconds // 60
 
     def get_percentage_done(self):
-        return int(100*(self.crnt_index)/len(self.btc_df))
+        return int(100 * (self.crnt_time) / len(self.btc_df))
 
     def get_closing_price(self):
         return self.btc_df.iloc[-1].Close
