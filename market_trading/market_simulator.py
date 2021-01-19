@@ -1,8 +1,10 @@
 import matplotlib.pyplot as plt
+import pandas as pd
 
 
 class MarketSimulator:
     def __init__(self, market, trader):
+
         self.trader = trader
         self. market = market
 
@@ -17,41 +19,76 @@ class MarketSimulator:
         # self.trader.initial_buy(last_price)
         # self.buy_pts.append((0, self.trader.initial_credit * self.trader.initial_buy_prcnt / last_price))
 
-        time_point = 0
-        while True:
-            # self.market.sleep(self.trader.trade_interval)
-            price_candle = self.market.get_current_price()
+        # time_point = 0
+        # while True:
+        #     # self.market.sleep(self.trader.trade_interval)
+        #     price_candle = self.market.get_current_price()
+        #
+        #     if price_candle is None:
+        #         break
+        #     else:
+        #         price = price_candle['close']
+        #         self.price_pts.append(price)
+        #         self.av_pts.append(self.trader.get_account_value(price))
+        #         self.cash_pts.append(self.trader.cash_volume)
+        #
+        #     action = None
+        #     # TODO: only trader.trade()
+        #     buy_vol = self.trader.how_much_to_buy(price, self.price_pts)
+        #     if buy_vol > 0:
+        #         action_amount = self.trader.buy(buy_vol, price)
+        #         self.buy_pts.append((time_point, action_amount))
+        #         action = 'Buy'
+        #
+        #     sell_vol = self.trader.how_much_to_sell(price, self.price_pts)
+        #     if sell_vol > 0:
+        #         action_amount = self.trader.sell(sell_vol, price)
+        #         self.sell_pts.append((time_point, action_amount))
+        #         action = 'Sell'
+        #
+        #     if action:
+        #         print(
+        #             f'(crnt time: {self.market.crnt_time} - {self.market.get_percentage_done()}%)',
+        #             f'{action}: {action_amount:.4f} ',
+        #             f'--> AV: {self.trader.get_account_value(price):.4f},'
+        #             f'cash: {self.trader.cash_volume:.4f}'
+        #         )
+        #
+        #     time_point += 1
 
-            if price_candle is None:
-                break
-            else:
-                price = price_candle['close']
-                self.price_pts.append(price)
-                self.av_pts.append(self.trader.get_account_value(price))
-                self.cash_pts.append(self.trader.cash_volume)
+        for time_point, price_candle in enumerate(self.market):
+            price = price_candle['close']
+            self.price_pts.append(price)
+            self.av_pts.append(self.trader.get_account_value(price))
+            self.cash_pts.append(self.trader.cash_volume)
 
-            action = None
-            buy_vol = self.trader.how_much_to_buy(price, self.price_pts)
-            if buy_vol > 0:
-                action_amount = self.trader.buy(buy_vol, price)
-                self.buy_pts.append((time_point, action_amount))
-                action = 'Buy'
-
-            sell_vol = self.trader.how_much_to_sell(price, self.price_pts)
-            if sell_vol > 0:
-                action_amount = self.trader.sell(sell_vol, price)
-                self.sell_pts.append((time_point, action_amount))
-                action = 'Sell'
+            action, amount = self.trader.trade(self.price_pts, price)
 
             if action:
+                if action == 'sell':
+                    self.buy_pts.append((time_point, amount))
+                elif action == 'buy':
+                    self.sell_pts.append((time_point, amount))
+
                 print(
                     f'(crnt time: {self.market.crnt_time} - {self.market.get_percentage_done()}%)',
-                    f'{action}: {action_amount:.4f} ',
+                    f'{action}: {amount:.4f} ',
                     f'--> AV: {self.trader.get_account_value(price):.4f},'
+                    f'asset: {self.trader.asset_volume:.6f},'
                     f'cash: {self.trader.cash_volume:.4f}'
                 )
 
-            time_point += 1
+        pd.DataFrame({
+            'price':self.price_pts,
+            'portfolio': self.av_pts,
+            'cash': self.cash_pts
+        }).merge(
+            pd.DataFrame(index=[t for t, _ in self.buy_pts], data=[p for _, p in self.buy_pts]),
+            left_index=True, right_index=True, how='left'
+        ).merge(
+            pd.DataFrame(index=[t for t, _ in self.sell_pts], data=[p for _, p in self.sell_pts]),
+            left_index=True, right_index=True, how='left'
+        ).to_csv('../data/sim_res.csv', header=True)
 
         print(f'Final account value: {self.trader.get_account_value(self.market.get_closing_price())}')
 

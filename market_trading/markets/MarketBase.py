@@ -5,7 +5,10 @@ class MarketBase:
     def get_current_price(self):
         pass
 
-    def sleep(self, seconds):
+    def __iter__(self):
+        pass
+
+    def __next__(self):
         pass
 
     def run(self, n_steps=None):
