@@ -32,6 +32,9 @@ class BTCMarketSimulator(MarketBase):
             'low': crnt_row.Low
         }
 
+    def get_current_timestamp(self):
+        return self.btc_df.iloc[self.crnt_time].Timestamp
+
     def __iter__(self):
         self.crnt_time = 0
         return self
@@ -40,8 +43,9 @@ class BTCMarketSimulator(MarketBase):
         if self.crnt_time >= len(self.btc_df):
             raise StopIteration
         price_candle = self.get_current_price()
+        ts = self.get_current_timestamp()
         self.crnt_time += 1
-        return price_candle
+        return ts, price_candle
 
 
     def get_percentage_done(self):
@@ -49,3 +53,6 @@ class BTCMarketSimulator(MarketBase):
 
     def get_closing_price(self):
         return self.btc_df.iloc[-1].Close
+
+    def get_opening_price(self):
+        return self.btc_df.iloc[0].Close
