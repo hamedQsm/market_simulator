@@ -1,7 +1,9 @@
 from datetime import datetime
+from itertools import product
 
 from market_trading.market_simulator import MarketSimulator
 from market_trading.markets.BTCMarketSimulator import BTCMarketSimulator
+from market_trading.traders.ml_traders import LSTMTrader
 from market_trading.traders.simple_traders import AVGTrader, WindowTrader
 
 CREDIT = 1000
@@ -10,30 +12,50 @@ SELL_COMMISSION = .01
 
 CONFIG = {
     'sleep_time': 60 * 5,
-    # list of windows: (what_to_do, amount, window_size in min, profit_margin)
+    # list of windows: (what_to_do, amount, window_size in min, profit_margin, sleep_time in min)
     # ORDER MATTERS: the list elements are considered in order.
     'decision_profile': [
         # risk aversion: if we have a huge drop we want to sell to avert big loss.
-        # ('sell', 30, 30, -.1),
-        ('sell', 40, 24*60, -.15),
-        #('sell', 100, 30*24*60, -.2),
+        # ('sell', 10, 30, -.02, 5),
+        # ('sell', 30, 60, -.1, 20),
+        # ('sell', 40, 2*60, -.15, 30),
+        # ('sell', 60, 4*60, -.2, 60),
+        # ('sell', 40, 24*60, -.1),
+        # ('sell', 60, 24*60, -.15),
+        # ('sell', 100, 30*24*60, -.2),
 
-        # lowering average
-        ('buy', 10, 30, -.02), #('buy', 20, 24*60, -.05),  ('buy', 50, 30*24*60, -.1),
+        # if in good profit sell
+        ('sell', 200, 'avg', .3, 60),
+        ('sell', 100, 'avg', .2, 30), # sell 100 if 20% above avg and don't sell till next day
+        ('sell', 50, 'avg', .1, 20),
+        # ('sell', 5, 'avg', .02, 5),
+        # ('sell', 3, 'avg', .01, 2),
 
-         # sell in case of profit
-        ('sell', 10, 30, .04),
-        ('sell', 20, 24*60, .05),
-        #('sell', 50, 30*24*60, .1)
+        ('sell', 2, 10, .01, 2),
+
+        # Buy in case of recent drops
+        # ('buy', 20, 60, -.01)
+        # ('buy', 10, 15, -.01, 6),
+        ('buy', 5, 15, -.015, 6),
+        ('buy', 3, 10, -.01, 2),
+        ('buy', 2, 5, -.005, 1),
+
+        # sell in case of recent rise
+        # ('sell', 50, 30, .05, 10),
+        # ('sell', 100, 12 * 60, .06, 30),
+        # ('sell', 50, 30*24*60, .1)
 
     ],
 }
 
-def run_simulation():
+VISUALIZATION_WIN = 60*24*7 # show the plot for each week
+
+
+def run_simulation(config):
     market = BTCMarketSimulator(
-        start_timestamp=int(datetime(year=2017, month=11, day=1).timestamp()),
-        end_timestamp=int(datetime(year=2018, month=6, day=1).timestamp()),
-        btc_price_csv='../data/bitstampUSD_1-min_data_2012-01-01_to_2020-12-31.csv'
+        start_timestamp=int(datetime(year=2020, month=10, day=1).timestamp()),
+        end_timestamp=int(datetime(year=2020, month=12, day=30).timestamp()),
+        btc_price_csv='data/bitstampUSD_1-min_data_2012-01-01_to_2020-12-31.csv'
     )
 
     # trader = AVGTrader(
@@ -47,22 +69,31 @@ def run_simulation():
     #     sell_commission=SELL_COMMISSION
     # )
 
-    trader = WindowTrader(
-        decision_profile=CONFIG['decision_profile'],
+    # trader = WindowTrader(
+    #     decision_profile=config['decision_profile'],
+    #     credit=CREDIT,
+    #     trade_interval=config["sleep_time"],
+    #     buy_commission=BUY_COMMISSION,
+    #     sell_commission=SELL_COMMISSION
+    # )
+
+    trader = LSTMTrader(
+        model_path='models/lstml_2020_1_9',
+        scalar_path='models/scaler.pkl',
         credit=CREDIT,
-        trade_interval=CONFIG["sleep_time"],
+        trade_interval=60,
         buy_commission=BUY_COMMISSION,
         sell_commission=SELL_COMMISSION
     )
 
-    simulation = MarketSimulator(market, trader, CONFIG)
+    simulation = MarketSimulator(market, trader, config)
 
-    simulation.run()
-
-    simulation.plot_history()
+    simulation.run(VISUALIZATION_WIN)
+    # simulation.save_results()
+    simulation.plot_all_history()
 
 if __name__ == '__main__':
-    run_simulation()
+    run_simulation(CONFIG)
 
 
 

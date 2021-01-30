@@ -75,29 +75,41 @@ class WindowTrader(TraderBase):
         super().__init__(credit, trade_interval,
                          buy_commission, sell_commission)
         self.decision_profile = decision_profile
+        self.sell_interval = 0
+        self.buy_interval = 0
 
 
     def trade(self, price_history, asset_price):
+        self.sell_interval -= 1 if self.sell_interval > 0 else 0
+        self.buy_interval -= 1 if self.buy_interval > 0 else 0
         # if self.asset_volume == 0:
         #     return 'buy', self.initial_buy_step / asset_price
-        win_sizes = {ws for _, _, ws, _ in self.decision_profile}
+        win_sizes = {ws for _, _, ws, _, _ in self.decision_profile if type(ws) is int}
         mean_win_dict = {
             ws: mean(price_history[-min(ws, len(price_history)):]) for ws in win_sizes
         }
-        for action, amount, win_size, margin in self.decision_profile:
-            if (action == 'sell' and self.asset_volume == 0) \
-                    or (action == 'buy' and self.cash_volume == 0):
+        # TODO: MAYBE look at std as well? if market is fluctuating do not do these?
+        for action, amount, win_size, margin, slp_time in self.decision_profile:
+            if (action == 'sell' and ((self.asset_volume == 0) or (self.sell_interval > 0))) \
+                    or (action == 'buy' and ((self.cash_volume < 0.1) or (self.buy_interval > 0))):
                 continue
+
+            take_action = False
+
+            anchor_price = self.avg_price if win_size == 'avg' else mean_win_dict[win_size]
             take_action = (
-                (mean_win_dict[win_size] < (1 - margin) * asset_price)
-                if margin > 0 else (mean_win_dict[win_size] > (1 - margin) * asset_price)
+                (anchor_price < (1 - margin) * asset_price)
+                if margin > 0 else (anchor_price > (1 - margin) * asset_price)
             )
 
             if take_action:
                 if action == 'sell':
                     amount = self.sell_in_currency(amount, asset_price)
-                else:
+                    self.sell_interval = slp_time
+                    return action, amount
+                elif action == 'buy':
                     amount = self.buy_in_currency(amount, asset_price)
-                return action, amount
+                    self.buy_interval = slp_time
+                    return action, amount
 
         return None, 0

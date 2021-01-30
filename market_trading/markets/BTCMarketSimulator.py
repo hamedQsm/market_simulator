@@ -12,6 +12,7 @@ class BTCMarketSimulator(MarketBase):
         self.btc_df= (
             btc_df[(btc_df['Timestamp'] >= start_timestamp) &
                    (btc_df['Timestamp'] < end_timestamp if end_timestamp else True)]
+            .interpolate(axis=0)
             .sort_values('Timestamp', ascending=True)
             .reset_index().drop(columns=['index'])
         )
